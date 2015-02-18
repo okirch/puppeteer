@@ -1,0 +1,14 @@
+<script>
+<!-- Wait for the application to be "active" -->
+<wait-event type="ApplicationActivate"/>
+
+<!-- Explicitly make the "no" button the focus widget -->
+<set-focus objectPath="mainWindow.*.noCoffeeButton"/>
+
+<!-- Send key events to the button.  -->
+<send-event type="KeyPress" objectPath="mainWindow.*.noCoffeeButton" key="space"/>
+<send-event type="KeyRelease" objectPath="mainWindow.*.noCoffeeButton" key="space"/>
+
+<wait-application-exit/>
+</script>
+

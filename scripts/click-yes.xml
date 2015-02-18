@@ -1,0 +1,6 @@
+<script>
+<wait-event type="ApplicationActivate"/>
+<send-event type="MouseButtonPress" objectPath="mainWindow.*.yesButton" button="left"/>
+<send-event type="MouseButtonRelease" objectPath="mainWindow.*.yesButton" button="left"/>
+<wait-application-exit/>
+</script>

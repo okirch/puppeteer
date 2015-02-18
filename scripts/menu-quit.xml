@@ -1,0 +1,40 @@
+<script>
+<!-- Wait for the application to be "active" -->
+<wait-event type="ApplicationActivate"/>
+<wait-event type="FocusIn"/>
+
+<!-- Send a mouse press event to the menu bar.
+     The target action is used to determine the coordinates of the mouse click.
+  -->
+<send-event type="MouseButtonPress" objectPath="mainWindow.*" button="left">
+  <classhints name="QMenuBar"/>
+  <target>
+    <action text="File" iconText="File"/>
+  </target>
+</send-event>
+<wait-event type="Show" objectPath="mainWindow.*">
+  <classhints name="QMenu">
+    <property name="title" type="string" value="File"/>
+  </classhints>
+</wait-event>
+<send-event type="MouseButtonRelease" objectPath="mainWindow.*" x="-1" y="-1" button="left">
+  <classhints name="QMenu">
+    <property name="title" type="string" value="File"/>
+  </classhints>
+</send-event>
+<send-event type="MouseButtonPress" objectPath="mainWindow.*" button="left">
+  <classhints name="QMenu">
+    <property name="title" type="string" value="File"/>
+  </classhints>
+  <target>
+    <action text="Quit" iconText="Quit"/>
+  </target>
+</send-event>
+<send-event type="MouseButtonRelease" objectPath="mainWindow.*" button="left">
+  <classhints name="QMenu">
+    <title string="File"/>
+  </classhints>
+</send-event>
+<wait-application-exit/>
+</script>
+

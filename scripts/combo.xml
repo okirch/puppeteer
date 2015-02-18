@@ -1,0 +1,31 @@
+<script>
+<wait-event type="ApplicationActivate"/>
+
+<!-- Initially, we start with a beautiful morning -->
+<verify objectPath="mainWindow.*.helloLabel">
+  <classdata>
+    <property name="text" value="Hello world. What a beautiful morning."/>
+  </classdata>
+</verify>
+
+<send-event type="MouseButtonPress" objectPath="mainWindow.*.morningCombo" button="left"/>
+<send-event type="MouseButtonRelease" objectPath="mainWindow.*.morningCombo" button="left"/>
+<send-event type="MouseButtonPress" objectPath="mainWindow.*.morningCombo" button="left">
+  <target>
+    <item text="terrible"/>
+  </target>
+</send-event>
+<send-event type="MouseButtonRelease" objectPath="mainWindow.*.morningCombo.*.qt_scrollarea_viewport" button="left"/>
+
+<!-- Now that we've selected a different type of morning in the combo box, the label should reflect that. -->
+<verify objectPath="mainWindow.*.helloLabel">
+  <classdata>
+    <property name="text" value="Hello world. What a terrible morning."/>
+  </classdata>
+</verify>
+
+<send-event type="MouseButtonPress" objectPath="mainWindow.*.yesButton" button="left"/>
+<send-event type="MouseButtonRelease" objectPath="mainWindow.*.yesButton" button="left"/>
+<wait-application-exit/>
+</script>
+

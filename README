@@ -1,0 +1,235 @@
+
+Here's a rough couple of pieces to illustrate how one could automate
+UI testing of Qt based applications through event matching and
+event injection.
+
+Conceptually, this tries to mimic how a tester interacts with the
+application:
+
+ - wait for something to happen
+ - then interact with the application
+ - then compare the presentation (or the application's output)
+   with the expected results.
+
+
+Giving it a quick try
+
+Before explaining how this works, maybe it's best to give this
+a little try. Please compile everything, then run hello-world
+and observe the output. This should show you a log of events as
+delivered by the Qt application mainloop.
+
+This data is never used directly, but it can be used to create
+new test scripts fairly easily if you know which events are
+relevant.
+
+Now, as an example of how this can be used to drive an application,
+run
+
+PUPPETEER_PLAYBACK=scripts/click-yes.xml ./hello-world
+
+This should again bring up the hello-world application, but you should
+see that "something" is clicking the yes button, causing the application
+to exit. On the console, a lot of diagnostic output is being printed.
+
+
+
+How it's being used
+
+As the examples above illustrate, the framework can work in two
+modes: recording or playback. Right now, recording happens primarily
+by writing a stream of XML formatted event records to standard
+output. Playback is triggered when the test instrumentation finds
+an evironment variable named PUPPETEER_PLAYBACK; it takes that as
+the name of an XML file containing the script to execute.
+
+This "script" is extremely simplistic right now and doesn't support
+any modern concepts like variable names, or even fancier things like
+conditionals or even loops.
+
+Right now, the application needs specific instrumentation to make
+use of this stuff - see main() in the source code. However, in the
+long run, this should be changed to make this a run-time thing,
+for instance using LD_PRELOAD or something similar. Maybe some
+cooperation from the application may still be required (in the form
+of invoking a kind of rendezvous object), but the ultimate goal would be
+the ability to test drive the application exactly as shipped, rather
+than a special build.
+
+
+
+So, how does it work?
+
+Above, I mentioned that the three different stages of a test are
+
+ - wait for something to happen
+ - then interact with the application
+ - then compare the presentation (or the application's output)
+   with the expected results.
+
+Of course, these three stages can be repeated any number of times, and not
+each step is actually present on every turn. But nevertheless, this
+wait/interact/verify approach may be helpful in modelling things well.
+
+
+
+Waiting for something
+
+This "waiting for something" can be modelled by waiting for a Qt
+event. Simple events to wait for could be the application becoming
+ready for input, a widget receiving keyboard focus, a popup being
+shown, etc.
+
+This can be implemented by adding an event filter into the Qt event
+loop. This filter can be used in two ways - in recording mode,
+it will just log all events that occur, facilitating the later
+construction of a test script. In playback mode, each observed
+event is compared to a (possibly partial) specification of the
+event we're waiting for.
+
+The tricky part here is how to identify the widget an event applies
+to, and represent this in a way that is useful in a script (for
+instance, the pointer to the C++ object, printed in hex notation
+clearly does not suffice).
+
+Alternatively, "waiting for something" may be just a user defined
+timeout, allowing the application "to do its thing" before we
+inspect its state. This is trivially accomplished using a Qt timer.
+
+
+Interact with the application
+
+The next step is nothing more or less than sending events to a
+widget or some other UI component. Here, again, identifying the
+receiver of the event is crucial.
+
+
+
+Verify the expected state
+
+In this step, the effects of a previous interaction (mouse click,
+key press, etc) need to be verified. Normally, this means inspecting
+the state of one or more widget and making sure that they show what is
+expected.
+
+Using the Qt meta object model and its notion of properties, etc,
+a lot of these verification can probably be fairly mechanical. Other
+aspects of a widget not covered by properties (for instance, the
+contents of a list widget) would have to be programmed explicitly for
+each widget type.
+
+Here's what currently works:
+
+  <verify objectPath="mainWindow.*.helloLabel">
+    <classdata>
+      <property name="text" value="Hello world. What a beautiful morning."/>
+    </classdata>
+  </verify>
+
+This will inspect the indicated widget and look at its "text" property.
+If its value matches the expected value, then the test passes. Note that
+you can provide more than one such property; in this case the test will
+pass if and only if all properties have the expected value.
+
+
+
+
+The problem of identifying a widget
+
+The basic assumption is that the application provides us with enough
+information to identify UI components - eg through captions, labels,
+or ideally the widget's object name.
+
+If the application (let's call it yast2) uses reasonable names for
+identifying its widgets, it can assign those to each QWidget using
+the setObjectName() call. This information can then be used to build
+a "path" to the object, such as "mainWindow.*.yesButton" or
+"mainWindow.centralFrame.playlist".
+
+So, sending an event to the yesButton could be described like this:
+
+ <send-event
+ 	type="MouseButtonPress" 
+ 	objectPath="mainWindow.*.yesButton"
+	button="left"/>
+
+Of course, not all widgets will be assigned an explicit
+name; especially if these widgets are created internally by
+other Qt classes. A prime example would be a menubar and its
+submenus. Nevertheless, these can also be identified reasonably well
+based on their type and or properties.
+
+Type information can be included in an event using a "class hint":
+
+  <send-event
+  	type="MouseButtonPress"
+	objectPath="mainWindow.*"
+	button="left">
+    <classhints name="QMenuBar"/>
+  </send-event>
+
+With this information, the test engine would look for a descendant
+widget of "mainWindow" having a type of "QMenuBar".
+
+Beyond that, one could also use properties of an object to further
+narrow down the search, like this:
+
+  <send-event
+  	type="MouseButtonPress"
+	objectPath="mainWindow.*"
+	button="left">
+    <classhints name="QMenu">
+      <property name="title" type="string" value="File"/>
+    </classhints>
+  </send-event>
+
+The event receiver is a QMenu with a title string of "File" (or
+"&File" or "F&ile" or whatever :). This method of identification
+should probably be used as a very last resort only, because running
+a localized application in a different language could cause this test
+to fail simply because the title strings change.
+
+
+
+What if more information is needed?
+
+Okay, the above seems like a fairly exhaustive. Nevertheless, when describing
+or delivering events, additional information may be need. For instance, a
+menu bar is a single widget with rectangular areas corresponding to certain
+submenus. The size of these areas depend on the font size, the language chosen,
+and possibly some other factors. So it wouldn't be a great idea to hard-code
+the relative position of a mouse button event in a script. Instead, one would
+want to be able specify the "name" of the menu item to select.
+
+Here's how things look currently:
+
+<send-event type="MouseButtonPress" objectPath="mainWindow.*" button="left">
+  <classhints name="QMenuBar"/>
+  <target>
+    <action text="File"/>
+  </target>
+</send-event>
+
+Note the <target> element - this tells the UI testing code to find where in the
+menu bar there is an action named "File", and use the location of that action
+for the coordinates of the mouse click.
+
+Of course, again this will fail when using different languages... which is something
+that needs to be worked on.
+
+
+
+Future Options
+
+Things that may make sense to do
+
+ - rather than load one large script at start-up time, establish a connection
+   with an external process that controls execution of the application. This
+   would allow to use a richer language like python without polluting the
+   application's namespace.
+
+   At the same time, it makes more sense to keep the event matching
+   part in the application itself, rather than looping all events
+   to the external controller application.
+
+

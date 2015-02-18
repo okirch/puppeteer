@@ -1,0 +1,15 @@
+<script>
+<!-- Wait for the application to be "active" -->
+<wait-event type="ApplicationActivate"/>
+
+<!-- Use TAB to focus -->
+<send-event type="KeyPress" objectPath="mainWindow.*.yesButton" key="tab"/>
+<send-event type="KeyRelease" objectPath="mainWindow.*.noCoffeeButton" key="tab"/>
+
+<!-- Send key events to the button.  -->
+<send-event type="KeyPress" objectPath="mainWindow.*.noCoffeeButton" key="space"/>
+<send-event type="KeyRelease" objectPath="mainWindow.*.noCoffeeButton" key="space"/>
+
+<wait-application-exit/>
+</script>
+

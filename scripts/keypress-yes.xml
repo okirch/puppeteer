@@ -1,0 +1,11 @@
+<script>
+<!-- Wait for the application to be "active" -->
+<wait-event type="ApplicationActivate"/>
+
+<!-- Send key events to the button.  -->
+<send-event type="KeyPress" objectPath="mainWindow.*.yesButton" key="space"/>
+<send-event type="KeyRelease" objectPath="mainWindow.*.yesButton" key="space"/>
+
+<wait-application-exit/>
+</script>
+
